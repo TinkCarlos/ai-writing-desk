@@ -1,4 +1,5 @@
-export const RULE_VERSION = "2026-10-17.3";
+// 内容同 2026-10-17.2（回退 .3）
+export const RULE_VERSION = "2026-10-17.4";
 export const RULES_CHECKED_AT = "2026-10-17";
 
 export const POLICY_REFERENCES = [
