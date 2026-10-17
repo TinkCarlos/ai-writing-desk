@@ -1,4 +1,4 @@
-export const RULE_VERSION = "2026-10-17.2";
+export const RULE_VERSION = "2026-10-17.3";
 export const RULES_CHECKED_AT = "2026-10-17";
 
 export const POLICY_REFERENCES = [
