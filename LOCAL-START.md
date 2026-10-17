@@ -94,5 +94,5 @@ deno check --config dashboard/deno.json dashboard/src/env.d.ts dashboard/src/sim
 deno lint src/apps/simple scripts/simple.ts dashboard/src/simple.tsx dashboard/src/components/simple-review-panel.tsx dashboard/vite.config.ts
 ```
 
-实际验证与限制见 `design-review.md`。本地测试和端到端运行的生成结果会写到被 Git 忽略的
+本地测试和端到端运行的生成结果会写到被 Git 忽略的
 `output/` 目录，不随仓库提交。
