@@ -257,6 +257,7 @@ export async function reviseArticle(
   const usedIds = new Set(review.issues.flatMap((issue) => issue.ruleIds));
   const usedRules = REVIEW_RULES.filter((rule) => usedIds.has(rule.id))
     .map((rule) => `${rule.id}：${rule.instruction}`).join("\n");
+  const start = performance.now();
   const response = await llm.createChatCompletion([
     {
       role: "system",
@@ -288,6 +289,7 @@ export async function reviseArticle(
       model: response.model,
       finishReason: response.choices[0]?.finish_reason,
       usage: response.usage,
+      elapsedMs: Math.round(performance.now() - start),
     }));
     throw new Error(
       response.choices[0]?.finish_reason === "length"
@@ -308,5 +310,6 @@ export async function reviseArticle(
     ...result,
     model: response.model ?? null,
     usage: response.usage ?? null,
+    elapsedMs: Math.round(performance.now() - start),
   };
 }

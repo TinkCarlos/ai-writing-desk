@@ -184,10 +184,10 @@ export async function generate(
   ], {
     temperature: 0.35,
     // Thinking tokens share the completion budget with the final article.
-    max_tokens: mode === "outline" ? 8192 : 16384,
+    max_tokens: mode === "outline" ? 16384 : 32768,
     thinking: { type: "enabled" },
     reasoning_effort: reasoningEffort(),
-    timeoutMs: 300000,
+    timeoutMs: 600000,
     maxAttempts: 1,
     response_format: { type: "json_object" },
   });
@@ -199,7 +199,11 @@ export async function generate(
       finishReason: "length",
       usage: response.usage,
     }));
-    throw new Error("模型输出被截断，请缩短大纲后重试；当前草稿已保留");
+    throw new Error(
+      mode === "outline"
+        ? "大纲生成超出输出上限被截断，请重试；素材很多时可先精简素材"
+        : "正文生成超出输出上限被截断，请重试；当前草稿已保留",
+    );
   }
   const raw = object(parseLLMJson(response.choices[0]?.message?.content ?? ""));
   const result = mode === "outline"

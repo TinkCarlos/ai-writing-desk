@@ -235,7 +235,7 @@ Deno.test("大纲与正文均使用 max 思考，保留思考和最终内容的�
     llm.createChatCompletion = (messages, options) => {
       assertEquals(options?.thinking, { type: "enabled" });
       assertEquals(options?.reasoning_effort, "max");
-      assertEquals(options?.max_tokens, mode === "outline" ? 8192 : 16384);
+      assertEquals(options?.max_tokens, mode === "outline" ? 16384 : 32768);
       assertEquals(options?.maxAttempts, 1);
       return original(messages, options);
     };
