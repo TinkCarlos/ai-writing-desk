@@ -62,8 +62,8 @@ _데모 콘텐츠: 위의 개요와 글은 이 README를 위해 작성한 샘플
 **요구 사항**: [Deno 2](https://docs.deno.com/runtime/getting_started/installation/)와 DeepSeek API 키.
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 

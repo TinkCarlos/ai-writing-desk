@@ -62,8 +62,8 @@ _Contenido de demostración: el esquema y el artículo de arriba son un ejemplo 
 **Requisitos**: [Deno 2](https://docs.deno.com/runtime/getting_started/installation/) y una clave de API de DeepSeek.
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 

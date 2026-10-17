@@ -62,8 +62,8 @@ _示例内容：以上大纲和文章是为本 README 编写的示例。_
 **环境要求**：[Deno 2](https://docs.deno.com/runtime/getting_started/installation/) 和一个 DeepSeek API key。
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 

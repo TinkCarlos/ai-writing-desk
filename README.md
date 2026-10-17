@@ -62,8 +62,8 @@ _Demo content: the outline and article above are a sample written for this READM
 **Requirements**: [Deno 2](https://docs.deno.com/runtime/getting_started/installation/) and a DeepSeek API key.
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 

@@ -62,8 +62,8 @@ _Demo-Inhalt: Gliederung und Artikel oben sind ein Beispiel, das für dieses REA
 **Voraussetzungen**: [Deno 2](https://docs.deno.com/runtime/getting_started/installation/) und ein DeepSeek-API-Key.
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 

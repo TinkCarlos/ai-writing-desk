@@ -62,8 +62,8 @@ _Демо-контент: план и статья выше — пример, н
 **Требования**: [Deno 2](https://docs.deno.com/runtime/getting_started/installation/) и API-ключ DeepSeek.
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 

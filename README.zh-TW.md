@@ -62,8 +62,8 @@ _示範內容：以上的大綱和文章是為本 README 撰寫的範例。_
 **需求**：[Deno 2](https://docs.deno.com/runtime/getting_started/installation/) 和一組 DeepSeek API key。
 
 ```sh
-git clone https://github.com/TinkCarlos/trendpublish.git
-cd trendpublish
+git clone https://github.com/TinkCarlos/ai-writing-desk.git
+cd ai-writing-desk
 deno task simple
 ```
 
