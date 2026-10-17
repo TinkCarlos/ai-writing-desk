@@ -219,7 +219,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
             baseUrl: "https://api.deepseek.com/v1",
             apiKey: settings.apiKey,
             model: settings.model,
-            timeoutMs: 300000,
+            timeoutMs: 600000,
             maxAttempts: 1,
           });
           await llm.initialize();

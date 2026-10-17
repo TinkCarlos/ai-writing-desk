@@ -207,8 +207,8 @@ export async function reviewArticle(
   ], {
     thinking: { type: "enabled" },
     reasoning_effort: reasoningEffort(),
-    max_tokens: 32768,
-    timeoutMs: 300000,
+    max_tokens: 65536,
+    timeoutMs: 600000,
     maxAttempts: 1,
     response_format: { type: "json_object" },
   });
@@ -221,7 +221,11 @@ export async function reviewArticle(
       usage: response.usage,
       elapsedMs: Math.round(performance.now() - start),
     }));
-    throw new Error("评审没有完整结束，请重试；不能当作评审通过");
+    throw new Error(
+      response.choices[0]?.finish_reason === "length"
+        ? "评审超出输出上限被截断，请重试；不能当作评审通过"
+        : "评审没有完整结束，请重试；不能当作评审通过",
+    );
   }
   const result = normalizeReview(
     parseLLMJson(response.choices[0]?.message?.content ?? ""),
@@ -272,13 +276,24 @@ export async function reviseArticle(
   ], {
     thinking: { type: "enabled" },
     reasoning_effort: reasoningEffort(),
-    max_tokens: 16384,
-    timeoutMs: 300000,
+    max_tokens: 32768,
+    timeoutMs: 600000,
     maxAttempts: 1,
     response_format: { type: "json_object" },
   });
   if (response.choices[0]?.finish_reason !== "stop") {
-    throw new Error("建议稿没有完整生成，原稿已保留");
+    console.info(JSON.stringify({
+      event: "simple-incomplete-generation",
+      mode: "revise",
+      model: response.model,
+      finishReason: response.choices[0]?.finish_reason,
+      usage: response.usage,
+    }));
+    throw new Error(
+      response.choices[0]?.finish_reason === "length"
+        ? "建议稿超出输出上限被截断，原稿已保留"
+        : "建议稿没有完整生成，原稿已保留",
+    );
   }
   const raw = object(parseLLMJson(response.choices[0]?.message?.content ?? ""));
   const result = {

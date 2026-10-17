@@ -185,6 +185,13 @@ export async function generate(
     response_format: { type: "json_object" },
   });
   if (response.choices[0]?.finish_reason === "length") {
+    console.info(JSON.stringify({
+      event: "simple-incomplete-generation",
+      mode,
+      model: response.model,
+      finishReason: "length",
+      usage: response.usage,
+    }));
     throw new Error("模型输出被截断，请缩短大纲后重试；当前草稿已保留");
   }
   const raw = object(parseLLMJson(response.choices[0]?.message?.content ?? ""));

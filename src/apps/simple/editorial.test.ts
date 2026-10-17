@@ -99,7 +99,7 @@ Deno.test("评审要覆盖六维，引用真实原句，不得用失败/缺维�
   const stub = mock(raw);
   const review = await reviewArticle(stub.llm, article);
   // Review reasoning can exceed 16K with the full rule list; 32K keeps headroom.
-  assertEquals(stub.maxTokens(), 32768);
+  assertEquals(stub.maxTokens(), 65536);
   assertEquals(review.status, "completed");
   assertEquals(review.ruleVersion, RULE_VERSION);
   assertEquals(review.issues[0].ruleIds, ["E3"]);
@@ -137,7 +137,7 @@ Deno.test("过期评审不得用于优化；建议稿不包含敏感信息且不
   );
   assertEquals(stub.calls(), 0);
   const candidate = await reviseArticle(stub.llm, article, review);
-  assertEquals(stub.maxTokens(), 16384);
+  assertEquals(stub.maxTokens(), 32768);
   assertEquals(candidate.changes, ["限定场景"]);
   assertEquals(article.body, "## 看证据\n\n不是所有场景都能用。");
   await assertRejects(() =>
