@@ -59,6 +59,8 @@ interface Status {
   configured: boolean;
   model: string;
   reasoningEffort: "max" | "high";
+  /** Rule version the backend loaded at startup; absent on older backends. */
+  ruleVersion?: string;
   generation?: { mode: string; attempt: number; startedAt: string } | null;
 }
 
@@ -192,8 +194,12 @@ function App() {
     aiAssisted: value.aiAssisted,
   });
   const currentReviewInput = JSON.stringify(getReviewInput(draft));
+  // Compare against the rules the backend actually loaded. Until status
+  // arrives (or on an older backend without the field), fall back to the
+  // version bundled into this page so nothing flips to stale while loading.
+  const activeRuleVersion = status?.ruleVersion || RULE_VERSION;
   const reviewCurrent = Boolean(
-    review && review.ruleVersion === RULE_VERSION &&
+    review && review.ruleVersion === activeRuleVersion &&
       reviewedInput === currentReviewInput,
   );
   const privacyFindings = scanPrivacy(currentReviewInput);
