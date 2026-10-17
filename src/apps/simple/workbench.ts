@@ -177,8 +177,8 @@ export async function generate(
   const instruction = mode === "outline"
     ? '返回 {"outline":"可编辑的大纲文本"}，交代目标读者、主问题、作者角度、适合本题材的展开顺序及需要补证的事实。不要机械凑固定章节。只写大纲，不写正文。'
     : '按已确认的大纲写完整初稿。返回 {"title":"标题","body":"Markdown 正文"}。正文用自然段，必要时用 ## 小标题，不重复文章标题。材料足够时约1200～1800字，材料不足时缩短，不为凑字数编造。完成前按底线与证据、中文表达、内容推进、读者通读四层检查，删去重复和空话；只输出稿件，不把自检报告写进文章。';
-  // Thinking can occasionally consume the whole budget before any article
-  // text is written; that case gets exactly one automatic retry.
+  // Thinking can occasionally consume the whole budget before any outline or
+  // article text is written; that case gets exactly one automatic retry.
   let attempts = 0;
   let response;
   while (true) {
@@ -205,7 +205,7 @@ export async function generate(
     const finish = response.choices[0]?.finish_reason;
     const empty = !(response.choices[0]?.message?.content ?? "").trim();
     if (finish !== "length") break;
-    const retry = mode === "article" && empty && attempts < 2;
+    const retry = empty && attempts < 2;
     console.info(JSON.stringify({
       event: "simple-incomplete-generation",
       mode,
@@ -223,7 +223,9 @@ export async function generate(
     if (retry) continue;
     throw new Error(
       mode === "outline"
-        ? "大纲生成超出输出上限被截断，请重试；素材很多时可先精简素材"
+        ? empty
+          ? "大纲没写出来，可以再点一次生成；素材已保留"
+          : "大纲生成超出输出上限被截断，请重试；素材很多时可先精简素材"
         : empty
         ? "正文没写出来，可以再点一次生成；草稿和大纲已保留"
         : "正文生成超出输出上限被截断，请重试；当前草稿已保留",

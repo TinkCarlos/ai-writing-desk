@@ -290,13 +290,26 @@ Deno.test("重试后仍没写出正文时明确报错，不返回空正文", asy
   assertEquals(llm.calls, 2);
 });
 
-Deno.test("已写出部分正文的截断、大纲截断都不重试", async () => {
+Deno.test("已写出部分内容的截断不重试；大纲为空时同样重试 1 次", async () => {
   const partial = sequence([{ content: '{"title":"标题","body":"半', finish: "length" }]);
   await assertRejects(() => generate(partial, input, "article"), Error, "截断");
   assertEquals(partial.calls, 1);
+  const partialOutline = sequence([{ content: '{"outline":"一、', finish: "length" }]);
+  await assertRejects(() => generate(partialOutline, input, "outline"), Error, "截断");
+  assertEquals(partialOutline.calls, 1);
   const outline = sequence([{ content: "", finish: "length" }]);
-  await assertRejects(() => generate(outline, input, "outline"), Error, "大纲");
-  assertEquals(outline.calls, 1);
+  await assertRejects(
+    () => generate(outline, input, "outline"),
+    Error,
+    "大纲没写出来，可以再点一次生成",
+  );
+  assertEquals(outline.calls, 2);
+  const recovered = sequence([
+    { content: "", finish: "length" },
+    { content: '{"outline":"大纲"}', finish: "stop" },
+  ]);
+  const result = await generate(recovered, input, "outline");
+  assertEquals([recovered.calls, result.attempts, result.outline], [2, 2, "大纲"]);
 });
 
 Deno.test("导出只保留一处 AI 声明：去掉模型自写的声明短句，保留其余说明", async () => {
