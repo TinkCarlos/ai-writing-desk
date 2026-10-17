@@ -10,7 +10,7 @@ RSS provider、OpenAI 兼容模型调用器和 minimal
 需要 Deno 2；本机当前验证版本为 2.9.3。
 
 ```sh
-cd /Users/libo/projects/公众号/website/trendpublish
+cd trendpublish  # 进入仓库根目录（clone 下来的目录）
 deno task simple
 ```
 
