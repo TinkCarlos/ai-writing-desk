@@ -61,3 +61,6 @@ tmp/
 *.sqlite
 *.sqlite3
 *.db
+
+# Local tool cache
+.impeccable/
