@@ -573,7 +573,9 @@ function App() {
             {slowStep && (
               <span className="simple-busy-note">
                 {busy === "review"
-                  ? "评审通常需要 1～2 分钟，正文已保存，请勿关闭页面"
+                  ? "评审可能需要 3～4 分钟，正文已保存，请勿关闭页面"
+                  : busy === "revise"
+                  ? "建议稿可能需要几分钟，原稿不会被覆盖，请勿关闭页面"
                   : "模型生成中，请勿关闭页面"}
               </span>
             )}
