@@ -347,3 +347,22 @@ Deno.test("联调开关只压低正文上限，不影响大纲", async () => {
     else Deno.env.set("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS", saved);
   }
 });
+
+Deno.test("正文提示限制开头数字密度，大纲提示不带这条", async () => {
+  const rule = "开头前两段最多用 2～3 个数字";
+  for (const mode of ["outline", "article"] as const) {
+    const llm = model(
+      mode === "outline"
+        ? '{"outline":"大纲"}'
+        : '{"title":"标题","body":"正文"}',
+    );
+    const original = llm.createChatCompletion;
+    let system = "";
+    llm.createChatCompletion = (messages, options) => {
+      system = String(messages[0].content);
+      return original(messages, options);
+    };
+    await generate(llm, input, mode);
+    assertEquals(system.includes(rule), mode === "article");
+  }
+});
