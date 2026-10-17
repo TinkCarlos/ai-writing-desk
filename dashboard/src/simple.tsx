@@ -955,7 +955,7 @@ function App() {
                       {
                         done: previewReady,
                         label: "排版预览是当前正文",
-                        todo: "点左侧「更新排版预览」",
+                        todo: html ? "点「更新排版预览」" : "点「生成排版预览」",
                       },
                       {
                         done: privacyFindings.length === 0,
