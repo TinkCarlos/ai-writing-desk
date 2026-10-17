@@ -54,7 +54,7 @@ interface News {
 interface Status {
   configured: boolean;
   model: string;
-  reasoningEffort: "max";
+  reasoningEffort: "max" | "high";
 }
 
 const STORAGE_KEY = "trendpublish.simple.draft.v1";
@@ -402,7 +402,7 @@ function App() {
           usage: { total_tokens?: number } | null;
           elapsedMs: number;
           model: string | null;
-          reasoningEffort: "max";
+          reasoningEffort: "max" | "high";
         }
       >(mode === "outline" ? "outline" : "generate", { ...draft, confirmed });
       if (mode === "outline") {
@@ -955,7 +955,9 @@ function App() {
                       {
                         done: previewReady,
                         label: "排版预览是当前正文",
-                        todo: html ? "点「更新排版预览」" : "点「生成排版预览」",
+                        todo: html
+                          ? "点「更新排版预览」"
+                          : "点「生成排版预览」",
                       },
                       {
                         done: privacyFindings.length === 0,
@@ -1157,9 +1159,11 @@ function App() {
           />
           <TextInput
             label="思考强度"
-            value="max"
+            value={status?.reasoningEffort ?? "max"}
             readOnly
-            description="大纲、正文、评审和建议稿均开启思考模式，使用 max 强度。"
+            description={`大纲、正文、评审和建议稿均开启思考模式，当前使用 ${
+              status?.reasoningEffort ?? "max"
+            } 强度；由本机服务的 SIMPLE_REASONING_EFFORT 设置，重启后生效。`}
           />
           <PasswordInput
             label="API Key"
