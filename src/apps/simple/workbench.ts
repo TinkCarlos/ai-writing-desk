@@ -149,10 +149,12 @@ const SYSTEM_PROMPT = [
   "不能编造价格、参数、时间、引述、测试结果或第一人称亲测经历。没有材料支持的内容明确标待核实，或省略。",
   "不要把一条产品新闻扩写成未经证实的行业结论。输出 JSON 对象，不要代码围栏。",
   WRITING_STYLE,
-  `平台风险底线（写完会独立评审；这里直接避开，不在正文或大纲里提编号）：\n${
-    WRITE_HINTS.join("\n")
-  }`,
 ].join("\n");
+
+const ARTICLE_RISK_HINTS =
+  `平台风险底线（写完会独立评审；这里直接避开，不在正文里提编号）：\n${
+    WRITE_HINTS.join("\n")
+  }`;
 
 export async function generate(
   llm: LLMProvider,
@@ -172,7 +174,12 @@ export async function generate(
     ? '返回 {"outline":"可编辑的大纲文本"}，交代目标读者、主问题、作者角度、适合本题材的展开顺序及需要补证的事实。不要机械凑固定章节。只写大纲，不写正文。'
     : '按已确认的大纲写完整初稿。返回 {"title":"标题","body":"Markdown 正文"}。正文用自然段，必要时用 ## 小标题，不重复文章标题。材料足够时约1200～1800字，材料不足时缩短，不为凑字数编造。完成前按底线与证据、中文表达、内容推进、读者通读四层检查，删去重复和空话；只输出稿件，不把自检报告写进文章。';
   const response = await llm.createChatCompletion([
-    { role: "system", content: `${SYSTEM_PROMPT}\n${instruction}` },
+    {
+      role: "system",
+      content: mode === "outline"
+        ? `${SYSTEM_PROMPT}\n${instruction}`
+        : `${SYSTEM_PROMPT}\n${ARTICLE_RISK_HINTS}\n${instruction}`,
+    },
     { role: "user", content: JSON.stringify(input) },
   ], {
     temperature: 0.35,
