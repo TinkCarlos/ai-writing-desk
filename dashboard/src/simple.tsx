@@ -220,11 +220,14 @@ function App() {
 
   useEffect(() => {
     setGenAttempt(1);
-    if (busy !== "article") return;
+    if (busy !== "article" && busy !== "outline") return;
     let alive = true;
     const timer = setInterval(() => {
       api<Status>("status").then((value) => {
-        if (alive && value.generation?.attempt) {
+        if (
+          alive && value.generation?.mode === busy &&
+          value.generation.attempt
+        ) {
           setGenAttempt(value.generation.attempt);
         }
       }).catch(() => {});
@@ -595,8 +598,10 @@ function App() {
         {busy && busyLabel[busy] && (
           <div className="simple-busy" role="status" aria-live="polite">
             <span className="simple-busy-dot" aria-hidden="true" />
-            {busy === "article" && genAttempt >= 2
+            {genAttempt >= 2 && busy === "article"
               ? "上次没写出正文，正在自动重试"
+              : genAttempt >= 2 && busy === "outline"
+              ? "上次没写出大纲，正在自动重试"
               : busyLabel[busy]}… 已用 {busySeconds} 秒
             {slowStep && (
               <span className="simple-busy-note">
@@ -608,6 +613,10 @@ function App() {
                   ? genAttempt >= 2
                     ? "重试会再用几分钟，草稿和大纲已保留，请勿关闭页面"
                     : "正文可能需要几分钟，没写出来会自动重试一次，请勿关闭页面"
+                  : busy === "outline"
+                  ? genAttempt >= 2
+                    ? "重试会再用一两分钟，素材已保留，请勿关闭页面"
+                    : "大纲可能需要一两分钟，没写出来会自动重试一次，请勿关闭页面"
                   : "模型生成中，请勿关闭页面"}
               </span>
             )}
