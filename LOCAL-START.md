@@ -19,11 +19,34 @@ deno task simple
 `SIMPLE_PORT=8001 deno task simple`。原版自动发布工作台的启动任务仍是
 `deno task dev`，不要与简化服务同时使用 8000 端口。
 
+## 配置
+
+- 模型：页面“模型设置”保存到 `src/temp/simple-model.json`；没有该文件时读取环境变量
+  `DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL`（默认 `deepseek-flash`）。
+- 思考强度：`SIMPLE_REASONING_EFFORT`，可选 `max` 或 `high`，不设时为
+  `max`；大纲、正文、评审和建议稿统一使用，填其他值服务启动时直接报错，改完需重启。例如
+  `SIMPLE_REASONING_EFFORT=high deno task simple`。
+- 端口：`SIMPLE_PORT`，默认 8000，范围 1024～65535。
+- 各步输出上限（思考 token 与正文共用）与请求超时：
+
+  | 步骤 | 输出上限（tokens） | 超时 |
+  |---|---|---|
+  | 大纲 | 16384 | 600 秒 |
+  | 正文 | 32768 | 600 秒 |
+  | 评审 | 65536 | 600 秒 |
+  | 建议稿 | 32768 | 600 秒 |
+
+- 自动重试：大纲或正文因思考耗尽而截断（`finish_reason: length`）且没有输出内容时，自动重试 1
+  次，页面显示第 2 次尝试；已有内容的截断直接报错，不重试。评审或建议稿被截断时报错，不当作通过。
+- 同一时间只运行一个生成任务，其他生成请求返回 409；`/api/simple/status` 的
+  `generation` 字段显示当前步骤和尝试次数。
+- `SIMPLE_DEBUG_ARTICLE_MAX_TOKENS` 仅供联调：临时压低正文上限以触发自动重试，设了以后正文基本必然失败，验完须去掉并重启。
+
 ## 使用
 
 1. 右上角“模型设置”：填写 DeepSeek Key，模型默认
-   `deepseek-flash`，大纲、正文、评审和建议稿都启用思考模式，强度固定为
-   `max`。保存不调用模型，配置成功不等于已验证模型可用。生成时才会将本次素材、大纲交给
+   `deepseek-flash`，大纲、正文、评审和建议稿都启用思考模式，强度默认
+   `max`，可用 `SIMPLE_REASONING_EFFORT` 改为 `high`（见上文“配置”）。保存不调用模型，配置成功不等于已验证模型可用。生成时才会将本次素材、大纲交给
    DeepSeek，并使用该账户额度。
 2. 找热点：读取 OpenAI、Hugging Face 的公开
    RSS，保留链接与源发布时间，按时间排序。最多选择 5 条来源。RSS
@@ -41,7 +64,7 @@ deno task simple
    HTML。Markdown
    可先备份；发现疑似隐私时先脱敏。修改文章、素材或来源会使旧评审失效。模型失败保留原草稿，不把未完成评审当作通过。
 8. AI 参与生成的稿件在复制和导出时保留“本文使用 AI
-   辅助创作。”，发布时仍需使用公众号后台声明功能。基础 HTML
+   辅助创作。”；正文里模型自写的 AI 声明在导出时会去掉，最终只保留这一处。发布时仍需使用公众号后台声明功能。基础 HTML
    元数据不等于已经满足全部标识技术规范。
 
 ## 数据与边界
@@ -57,8 +80,9 @@ deno task simple
   初稿需要核对，不能当作真实亲测、准确引用或自动事实核查结果。
 - 本地先扫描常见凭证、手机号、身份证号和邮箱等，命中后不向模型发送；这是保守的模式匹配，可能误报，也不能识别所有隐私或商业秘密。服务端只缓存最多
   20 份本次运行评审，重启后生成建议稿需要重新评审。
-- 评审 P1～P9 采用公开资料，E1～E4
-  为编辑经验，每条意见可回查依据；页面显示日期与核验层级。规则版本变化会使旧评审失效。完整调研与样本限制见
+- 评审 P1～P11 采用公开资料，E1～E7
+  为编辑经验，以 `src/apps/simple/editorial-rules.ts` 为准；数字或归因错误、前后矛盾、倍数算不通等事实错误必须引用
+  P4。每条意见可回查依据；页面显示日期与核验层级。规则版本变化会使旧评审失效。完整调研与样本限制见
   `docs/writing-research.md`。本次无法直接读取微信完整规则，调研不是应用每次自动联网更新。没有微信内部推荐算法，阅读建议不能预测推流，也不保证合规或过审。
 
 ## 检查
@@ -70,5 +94,5 @@ deno check --config dashboard/deno.json dashboard/src/env.d.ts dashboard/src/sim
 deno lint src/apps/simple scripts/simple.ts dashboard/src/simple.tsx dashboard/src/components/simple-review-panel.tsx dashboard/vite.config.ts
 ```
 
-实际验证与限制见 `design-review.md`。初次预览没有模型调用；2026-10-16
-后续已获用户授权配置真实 Key 并测试，结果见 `output/deepseek-flash-max-test/`。
+实际验证与限制见 `design-review.md`。本地测试和端到端运行的生成结果会写到被 Git 忽略的
+`output/` 目录，不随仓库提交。
