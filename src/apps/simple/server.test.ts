@@ -3,6 +3,7 @@
 import { assert, assertEquals, assertMatch, assertRejects } from "jsr:@std/assert@1";
 import { createHandler } from "./server.ts";
 import { REVIEW_CATEGORIES } from "./review-contract.ts";
+import { RULE_VERSION } from "./editorial-rules.ts";
 
 const ORIGIN = "http://127.0.0.1:8000";
 const SOURCE = {
@@ -58,12 +59,15 @@ async function errorOf(res: Response, status: number) {
   return data.error as string;
 }
 
-Deno.test("status 返回 configured/model/reasoningEffort/generation", async () => {
+Deno.test("status 返回 configured/model/reasoningEffort/generation/ruleVersion", async () => {
   const { handler } = await setup();
   const res = await call(handler, "/api/simple/status");
   assertEquals(res.status, 200);
   const data = await res.json();
-  assertEquals(Object.keys(data).sort(), ["configured", "generation", "model", "reasoningEffort"]);
+  assertEquals(Object.keys(data).sort(), ["configured", "generation", "model", "reasoningEffort", "ruleVersion"]);
+  // 页面据此判断评审是否过期，必须与后端启动时加载的规则版本一致，而不是前端打包时的常量。
+  assertEquals(typeof data.ruleVersion, "string");
+  assertEquals(data.ruleVersion, RULE_VERSION);
   assertEquals(data.configured, false);
   assertEquals(data.generation, null);
   assertEquals(typeof data.model, "string");

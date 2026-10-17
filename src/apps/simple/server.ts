@@ -13,6 +13,7 @@ import {
   reviewInput,
   reviseArticle,
 } from "./editorial.ts";
+import { RULE_VERSION } from "./editorial-rules.ts";
 import type { ArticleReview } from "./review-contract.ts";
 import {
   brief,
@@ -128,6 +129,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
           model: settings.model,
           reasoningEffort: settings.reasoningEffort,
           generation,
+          ruleVersion: RULE_VERSION,
           ...(debugTokens !== null
             ? { debugArticleMaxTokens: debugTokens }
             : {}),
