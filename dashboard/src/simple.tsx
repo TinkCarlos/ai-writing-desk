@@ -27,7 +27,11 @@ import "./styles.css";
 import "./simple.css";
 import { SimpleReviewPanel } from "./components/simple-review-panel.tsx";
 import type { ArticleReview } from "../../src/apps/simple/review-contract.ts";
-import { AI_DISCLOSURE, scanPrivacy } from "../../src/apps/simple/privacy.ts";
+import {
+  AI_DISCLOSURE,
+  scanPrivacy,
+  stripModelDisclosure,
+} from "../../src/apps/simple/privacy.ts";
 import { RULE_VERSION } from "../../src/apps/simple/editorial-rules.ts";
 
 interface Source {
@@ -55,6 +59,7 @@ interface Status {
   configured: boolean;
   model: string;
   reasoningEffort: "max" | "high";
+  generation?: { mode: string; attempt: number; startedAt: string } | null;
 }
 
 const STORAGE_KEY = "trendpublish.simple.draft.v1";
@@ -170,6 +175,7 @@ function App() {
   const errorRef = useRef<HTMLDivElement>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [busyStart, setBusyStart] = useState(0);
+  const [genAttempt, setGenAttempt] = useState(1);
   const [now, setNow] = useState(() => Date.now());
   const renderInput = JSON.stringify({
     title: draft.title,
@@ -210,6 +216,23 @@ function App() {
     setNow(start);
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
+  }, [busy]);
+
+  useEffect(() => {
+    setGenAttempt(1);
+    if (busy !== "article") return;
+    let alive = true;
+    const timer = setInterval(() => {
+      api<Status>("status").then((value) => {
+        if (alive && value.generation?.attempt) {
+          setGenAttempt(value.generation.attempt);
+        }
+      }).catch(() => {});
+    }, 4000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
   }, [busy]);
 
   useEffect(() => {
@@ -298,7 +321,10 @@ function App() {
   function markdown(value: Draft) {
     const refs = value.sources.map((item) => `- [${item.title}](${item.url})`)
       .join("\n");
-    return `# ${value.title}\n\n${value.body}${
+    const body = value.aiAssisted
+      ? stripModelDisclosure(value.body)
+      : value.body;
+    return `# ${value.title}\n\n${body}${
       refs ? `\n\n## 来源资料\n\n${refs}` : ""
     }${value.aiAssisted ? `\n\n${AI_DISCLOSURE}` : ""}`;
   }
@@ -422,9 +448,9 @@ function App() {
         await runReview(next);
       }
       setGenerationInfo(
-        `${result.model || status?.model} · max · ${
-          (result.elapsedMs / 1000).toFixed(1)
-        } 秒${
+        `${result.model || status?.model} · ${
+          result.reasoningEffort || status?.reasoningEffort || "max"
+        } · ${(result.elapsedMs / 1000).toFixed(1)} 秒${
           result.usage?.total_tokens != null
             ? ` · ${result.usage.total_tokens} tokens`
             : " · 用量未返回"
@@ -569,13 +595,19 @@ function App() {
         {busy && busyLabel[busy] && (
           <div className="simple-busy" role="status" aria-live="polite">
             <span className="simple-busy-dot" aria-hidden="true" />
-            {busyLabel[busy]}… 已用 {busySeconds} 秒
+            {busy === "article" && genAttempt >= 2
+              ? "上次没写出正文，正在自动重试"
+              : busyLabel[busy]}… 已用 {busySeconds} 秒
             {slowStep && (
               <span className="simple-busy-note">
                 {busy === "review"
                   ? "评审可能需要 3～4 分钟，正文已保存，请勿关闭页面"
                   : busy === "revise"
                   ? "建议稿可能需要几分钟，原稿不会被覆盖，请勿关闭页面"
+                  : busy === "article"
+                  ? genAttempt >= 2
+                    ? "重试会再用几分钟，草稿和大纲已保留，请勿关闭页面"
+                    : "正文可能需要几分钟，没写出来会自动重试一次，请勿关闭页面"
                   : "模型生成中，请勿关闭页面"}
               </span>
             )}
