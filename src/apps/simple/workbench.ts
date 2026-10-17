@@ -5,6 +5,7 @@ import { WeixinArticleTemplateRenderer } from "@src/features/weixin-article/rend
 import { parseLLMJson } from "@src/utils/llm-output.ts";
 import { AI_DISCLOSURE, scanPrivacy } from "./privacy.ts";
 import { WRITING_STYLE } from "./writing-style.ts";
+import { WRITE_HINTS } from "./editorial-rules.ts";
 
 export const FEEDS = [
   { name: "OpenAI", url: "https://openai.com/news/rss.xml" },
@@ -147,6 +148,9 @@ const SYSTEM_PROMPT = [
   "不能编造价格、参数、时间、引述、测试结果或第一人称亲测经历。没有材料支持的内容明确标待核实，或省略。",
   "不要把一条产品新闻扩写成未经证实的行业结论。输出 JSON 对象，不要代码围栏。",
   WRITING_STYLE,
+  `平台风险底线（写完会独立评审；这里直接避开，不在正文或大纲里提编号）：\n${
+    WRITE_HINTS.join("\n")
+  }`,
 ].join("\n");
 
 export async function generate(
