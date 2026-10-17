@@ -313,3 +313,24 @@ Deno.test("导出只保留一处 AI 声明：去掉模型自写的声明短句�
   assert(!html.includes("本文由 AI 辅助整理"));
   assert(html.includes("未独立复现"));
 });
+
+Deno.test("联调开关只压低正文上限，不影响大纲", async () => {
+  const saved = Deno.env.get("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS");
+  Deno.env.set("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS", "512");
+  try {
+    for (const mode of ["outline", "article"] as const) {
+      const llm = model(
+        mode === "outline" ? '{"outline":"大纲"}' : '{"title":"标题","body":"正文"}',
+      );
+      const original = llm.createChatCompletion;
+      llm.createChatCompletion = (messages, options) => {
+        assertEquals(options?.max_tokens, mode === "outline" ? 16384 : 512);
+        return original(messages, options);
+      };
+      await generate(llm, input, mode);
+    }
+  } finally {
+    if (saved === undefined) Deno.env.delete("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS");
+    else Deno.env.set("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS", saved);
+  }
+});

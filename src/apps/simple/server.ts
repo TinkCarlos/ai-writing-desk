@@ -1,4 +1,8 @@
-import { type ReasoningEffort, reasoningEffort } from "./effort.ts";
+import {
+  debugArticleMaxTokens,
+  type ReasoningEffort,
+  reasoningEffort,
+} from "./effort.ts";
 import { OpenAICompatibleLLM } from "@src/integrations/llm/providers/openai-compatible-llm.ts";
 import { ProviderError } from "@src/core/errors/provider-error.ts";
 import {
@@ -83,6 +87,12 @@ async function readJson(req: Request) {
 
 export async function createHandler(modelFile = MODEL_FILE) {
   let settings = await loadSettings(modelFile);
+  const debugTokens = debugArticleMaxTokens();
+  if (debugTokens !== null) {
+    console.warn(
+      `[联调开关] SIMPLE_DEBUG_ARTICLE_MAX_TOKENS=${debugTokens}：正文输出上限被临时压低，验完请去掉并重启`,
+    );
+  }
   let generating = false;
   let generation: { mode: string; attempt: number; startedAt: string } | null =
     null;
@@ -118,6 +128,9 @@ export async function createHandler(modelFile = MODEL_FILE) {
           model: settings.model,
           reasoningEffort: settings.reasoningEffort,
           generation,
+          ...(debugTokens !== null
+            ? { debugArticleMaxTokens: debugTokens }
+            : {}),
         });
       }
       if (url.pathname === "/api/simple/settings" && req.method === "POST") {

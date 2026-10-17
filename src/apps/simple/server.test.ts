@@ -195,3 +195,20 @@ Deno.test("SIMPLE_REASONING_EFFORT 填了不支持的值，启动时直接报错
     else Deno.env.set("SIMPLE_REASONING_EFFORT", saved);
   }
 });
+
+Deno.test("联调开关 SIMPLE_DEBUG_ARTICLE_MAX_TOKENS：设了会在 status 里亮出来，非法值启动报错", async () => {
+  const saved = Deno.env.get("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS");
+  try {
+    Deno.env.set("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS", "512");
+    const { handler } = await setup();
+    const data = await (await call(handler, "/api/simple/status")).json();
+    assertEquals(data.debugArticleMaxTokens, 512);
+    for (const bad of ["abc", "10", "40000", "1.5"]) {
+      Deno.env.set("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS", bad);
+      await assertRejects(() => setup(), Error, "SIMPLE_DEBUG_ARTICLE_MAX_TOKENS");
+    }
+  } finally {
+    if (saved === undefined) Deno.env.delete("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS");
+    else Deno.env.set("SIMPLE_DEBUG_ARTICLE_MAX_TOKENS", saved);
+  }
+});
