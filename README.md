@@ -27,7 +27,9 @@ A local, human-in-the-loop AI writing desk for WeChat Official Account articles:
 - **Local and private by default**: the server listens on `127.0.0.1` only, rejects cross-origin writes, and scans your input for common credentials, phone numbers, ID numbers and email addresses before anything is sent to the model.
 - **No silent failures**: a review that was truncated or did not finish is never treated as passed, and your draft is kept when a model call fails.
 
-<!-- screenshot: review panel -->
+![Risk review panel: six checks, quoted sentences, suggestions and rule IDs](docs/images/review.png)
+
+_Demo content: the review result in this screenshot is sample data._
 
 ## Workflow
 
@@ -49,7 +51,11 @@ flowchart LR
 5. **Revision**: generate a suggested revision, compare, apply, and review again.
 6. **Export**: update the typeset preview, tick the manual check, then copy or export. Publish manually from the WeChat backend.
 
-<!-- screenshot: outline and draft editor -->
+![Step 2: sources, topic and outline](docs/images/outline.png)
+
+![Step 3: editor with WeChat typeset preview and export checklist](docs/images/editor.png)
+
+_Demo content: the outline and article above are a sample written for this README._
 
 ## Quick start
 
@@ -108,8 +114,6 @@ The review does not predict WeChat recommendation, does not score "AI-ness", and
 
 - **Automatic retry**: with thinking enabled, the model occasionally spends its whole token budget on reasoning and returns no text. If an outline or draft stops with `finish_reason: length` **and** empty content, the server retries exactly once; the page shows the second attempt. A truncated response that does contain text is reported as an error instead of being retried.
 - **AI disclosure, once**: when the article is marked as AI-assisted, export appends `本文使用 AI 辅助创作。` ("This article was written with AI assistance."). Any similar statement the model wrote into the body is removed first, so the exported article has exactly one disclosure. You should still use the AI-content declaration in the WeChat backend when publishing.
-
-<!-- screenshot: export with AI disclosure -->
 
 ## Tests
 
