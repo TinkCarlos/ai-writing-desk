@@ -975,7 +975,7 @@ function App() {
                       {
                         done: reviewCurrent && review?.status === "completed" &&
                           !highRisk,
-                        label: "没有高风险问题",
+                        label: "评审未标出高风险问题",
                         todo: "查看评审意见",
                         jump: true,
                       },
@@ -1003,6 +1003,17 @@ function App() {
                       </li>
                     ))}
                   </ul>
+                  {reviewCurrent && review?.status === "completed" &&
+                    review.issues.some((issue) =>
+                      issue.severity === "medium"
+                    ) && (
+                    <p className="simple-hint">
+                      另有 {review.issues.filter((issue) =>
+                        issue.severity === "medium"
+                      ).length}{" "}
+                      条中风险意见不拦导出，但评审也可能漏判，导出前请对照素材核一遍数字和归因。
+                    </p>
+                  )}
                   <Checkbox
                     label="我已检查当前评审、待核实事项与 AI 标识"
                     checked={exportConfirmed}
