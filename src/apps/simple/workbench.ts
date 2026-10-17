@@ -1,3 +1,4 @@
+import { reasoningEffort } from "./effort.ts";
 import { load } from "npm:cheerio@1.0.0";
 import type { LLMProvider } from "@src/core/ports/llm.ts";
 import { RsshubScraper } from "@src/integrations/fetch/providers/rsshub-scraper.ts";
@@ -178,7 +179,7 @@ export async function generate(
     // Thinking tokens share the completion budget with the final article.
     max_tokens: mode === "outline" ? 8192 : 16384,
     thinking: { type: "enabled" },
-    reasoning_effort: "max",
+    reasoning_effort: reasoningEffort(),
     timeoutMs: 300000,
     maxAttempts: 1,
     response_format: { type: "json_object" },
@@ -200,7 +201,7 @@ export async function generate(
     ...result,
     usage: response.usage ?? null,
     model: response.model ?? null,
-    reasoningEffort: "max" as const,
+    reasoningEffort: reasoningEffort(),
     elapsedMs: Math.round(performance.now() - startedAt),
   };
 }

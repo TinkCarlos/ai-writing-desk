@@ -1,3 +1,4 @@
+import { reasoningEffort } from "./effort.ts";
 import type { LLMProvider } from "@src/core/ports/llm.ts";
 import { parseLLMJson } from "@src/utils/llm-output.ts";
 import { InputError, object, type Source, sources, text } from "./workbench.ts";
@@ -205,7 +206,7 @@ export async function reviewArticle(
     },
   ], {
     thinking: { type: "enabled" },
-    reasoning_effort: "max",
+    reasoning_effort: reasoningEffort(),
     max_tokens: 32768,
     timeoutMs: 300000,
     maxAttempts: 1,
@@ -270,7 +271,7 @@ export async function reviseArticle(
     },
   ], {
     thinking: { type: "enabled" },
-    reasoning_effort: "max",
+    reasoning_effort: reasoningEffort(),
     max_tokens: 16384,
     timeoutMs: 300000,
     maxAttempts: 1,

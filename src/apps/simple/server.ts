@@ -1,3 +1,4 @@
+import { type ReasoningEffort, reasoningEffort } from "./effort.ts";
 import { OpenAICompatibleLLM } from "@src/integrations/llm/providers/openai-compatible-llm.ts";
 import { ProviderError } from "@src/core/errors/provider-error.ts";
 import {
@@ -26,7 +27,7 @@ const STATIC_DIR = new URL("../../../dist/dashboard/", import.meta.url);
 interface Settings {
   apiKey: string;
   model: string;
-  reasoningEffort: "max";
+  reasoningEffort: ReasoningEffort;
 }
 
 async function loadSettings(file: URL): Promise<Settings> {
@@ -35,14 +36,14 @@ async function loadSettings(file: URL): Promise<Settings> {
     return {
       apiKey: text(data.apiKey, "API Key", 300, false),
       model: text(data.model, "模型名称", 100),
-      reasoningEffort: "max",
+      reasoningEffort: reasoningEffort(),
     };
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) throw error;
     return {
       apiKey: Deno.env.get("DEEPSEEK_API_KEY")?.trim() ?? "",
       model: Deno.env.get("DEEPSEEK_MODEL")?.trim() || "deepseek-flash",
-      reasoningEffort: "max",
+      reasoningEffort: reasoningEffort(),
     };
   }
 }
@@ -130,7 +131,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
         const next: Settings = {
           apiKey: key || settings.apiKey,
           model,
-          reasoningEffort: "max",
+          reasoningEffort: reasoningEffort(),
         };
         if (!next.apiKey) throw new InputError("请先填写 DeepSeek API Key");
         await Deno.mkdir(new URL(".", modelFile), { recursive: true });
@@ -237,7 +238,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
             at: new Date().toISOString(),
             mode,
             model: result.model,
-            reasoningEffort: "max",
+            reasoningEffort: settings.reasoningEffort,
             elapsedMs: "elapsedMs" in result ? result.elapsedMs : undefined,
             usage: result.usage,
           }));

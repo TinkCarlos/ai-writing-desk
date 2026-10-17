@@ -1,6 +1,6 @@
 // HTTP 契约测试：只覆盖不调用模型的路径（守卫、校验、错误码、返回结构）。
 // 模型返回内容的解析由 editorial.test.ts / workbench.test.ts 用 mock 覆盖。
-import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertMatch, assertRejects } from "jsr:@std/assert@1";
 import { createHandler } from "./server.ts";
 import { REVIEW_CATEGORIES } from "./review-contract.ts";
 
@@ -169,4 +169,28 @@ Deno.test("outline：只有链接没有摘要和素材时返回 400", async () =
     }),
     400,
   );
+});
+
+Deno.test("SIMPLE_REASONING_EFFORT=high 时 status 返回 high", async () => {
+  const saved = Deno.env.get("SIMPLE_REASONING_EFFORT");
+  Deno.env.set("SIMPLE_REASONING_EFFORT", "high");
+  try {
+    const { handler } = await setup();
+    const data = await (await call(handler, "/api/simple/status")).json();
+    assertEquals(data.reasoningEffort, "high");
+  } finally {
+    if (saved === undefined) Deno.env.delete("SIMPLE_REASONING_EFFORT");
+    else Deno.env.set("SIMPLE_REASONING_EFFORT", saved);
+  }
+});
+
+Deno.test("SIMPLE_REASONING_EFFORT 填了不支持的值，启动时直接报错", async () => {
+  const saved = Deno.env.get("SIMPLE_REASONING_EFFORT");
+  Deno.env.set("SIMPLE_REASONING_EFFORT", "low");
+  try {
+    await assertRejects(() => setup(), Error, "SIMPLE_REASONING_EFFORT");
+  } finally {
+    if (saved === undefined) Deno.env.delete("SIMPLE_REASONING_EFFORT");
+    else Deno.env.set("SIMPLE_REASONING_EFFORT", saved);
+  }
 });
