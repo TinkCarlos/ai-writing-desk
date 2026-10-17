@@ -85,6 +85,34 @@ Deno.test("OpenAICompatibleLLM classifies network failures", async () => {
   assertEquals(error.kind, "network");
 });
 
+Deno.test("OpenAICompatibleLLM forwards explicit thinking effort without changing other callers", async () => {
+  const httpClient = new CaptureHttpClient();
+  const llm = new OpenAICompatibleLLM(
+    {
+      baseUrl: "https://llm.example.com/v1",
+      apiKey: "test-key",
+      model: "deepseek-flash",
+      timeoutMs: 300000,
+      maxAttempts: 1,
+    },
+    undefined,
+    httpClient,
+  );
+  await llm.initialize();
+  await llm.createChatCompletion([{ role: "user", content: "hello" }], {
+    thinking: { type: "enabled" },
+    reasoning_effort: "max",
+  });
+  let body = JSON.parse(String(httpClient.lastOptions?.body));
+  assertEquals(body.model, "deepseek-flash");
+  assertEquals(body.thinking, { type: "enabled" });
+  assertEquals(body.reasoning_effort, "max");
+  await llm.createChatCompletion([{ role: "user", content: "hello" }]);
+  body = JSON.parse(String(httpClient.lastOptions?.body));
+  assertEquals("thinking" in body, false);
+  assertEquals("reasoning_effort" in body, false);
+});
+
 class CaptureHttpClient {
   lastOptions?: RequestInit & {
     timeout?: number;

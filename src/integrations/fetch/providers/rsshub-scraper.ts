@@ -741,7 +741,7 @@ export class RsshubScraper implements ContentScraper {
       const title = String(item.title ?? item.name ?? `RSS Item ${index + 1}`);
       const link = String(item.link ?? item.url ?? item.id ?? sourceId);
       const content = String(
-        item.content ?? item.description ?? item.summary ?? title,
+        item.content ?? item.description ?? item.summary ?? "",
       );
       return {
         id: `rss_${this.hash(`${link}:${title}`)}`,
@@ -749,8 +749,7 @@ export class RsshubScraper implements ContentScraper {
         content,
         url: link,
         publishDate: String(
-          item.date_published ?? item.pubDate ?? item.published ?? new Date()
-            .toISOString(),
+          item.date_published ?? item.pubDate ?? item.published ?? "",
         ),
         metadata: {
           source: sourceId,
@@ -765,7 +764,9 @@ export class RsshubScraper implements ContentScraper {
       return await request(`${url.pathname}${url.search}`).json();
     }
 
-    const response = await fetch(url.href);
+    const response = await fetch(url.href, {
+      signal: AbortSignal.timeout(config.timeout ?? 10000),
+    });
     if (!response.ok) {
       throw new Error(
         `RSS 请求失败: ${response.status} ${response.statusText}`,

@@ -1,6 +1,8 @@
 {
   "nodeModulesDir": "auto",
   "tasks": {
+    "simple": "deno run -A scripts/simple.ts",
+    "simple:test": "deno test -A src/apps/simple/workbench.test.ts src/apps/simple/editorial.test.ts",
     "dev": "deno run -A scripts/task-runner.ts dev",
     "doctor": "deno run -A scripts/task-runner.ts doctor",
     "verify": "deno run -A scripts/task-runner.ts verify",

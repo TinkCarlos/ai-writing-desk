@@ -8,6 +8,8 @@ export interface ChatCompletionOptions {
   temperature?: number;
   top_p?: number;
   max_tokens?: number;
+  thinking?: { type: "enabled" | "disabled" };
+  reasoning_effort?: "none" | "low" | "high" | "max";
   /**
    * 单次模型调用的场景级超时。用于让可降级步骤快速失败，例如动态模板或质量审稿。
    */
@@ -39,6 +41,9 @@ export interface ChatCompletionResponse {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number };
+    prompt_cache_hit_tokens?: number;
+    prompt_cache_miss_tokens?: number;
   };
 }
 

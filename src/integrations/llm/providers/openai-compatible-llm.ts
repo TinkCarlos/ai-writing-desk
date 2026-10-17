@@ -131,6 +131,8 @@ export class OpenAICompatibleLLM implements LLMProvider {
             max_tokens: options.max_tokens ?? 2000,
             stream: options.stream ?? false,
             response_format: options.response_format,
+            thinking: options.thinking,
+            reasoning_effort: options.reasoning_effort,
           }),
           timeout: resolveRequestTimeoutMs(options.timeoutMs, this.timeoutMs),
           retries: resolveRequestMaxAttempts(

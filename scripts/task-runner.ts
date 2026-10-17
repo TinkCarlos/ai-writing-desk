@@ -3,6 +3,8 @@ import { Command } from "@cliffy/command";
 const DENO = Deno.execPath();
 
 const CHECK_FILES = [
+  "src/apps/simple/server.ts",
+  "scripts/simple.ts",
   "src/index.ts",
   "src/apps/weixin-relay/server.ts",
   "scripts/run.workflow.ts",
@@ -17,6 +19,8 @@ const CHECK_FILES = [
 ];
 
 const TEST_FILES = [
+  "src/apps/simple/workbench.test.ts",
+  "src/apps/simple/editorial.test.ts",
   "src/architecture-boundaries.test.ts",
   "src/release-readiness.test.ts",
   "src/utils/config/define-config.test.ts",
@@ -433,6 +437,7 @@ async function checkDashboard(extraArgs: string[] = []) {
     "dashboard/src/env.d.ts",
     "dashboard/vite.config.ts",
     "dashboard/src/app.tsx",
+    "dashboard/src/simple.tsx",
     ...extraArgs,
   ]);
 }

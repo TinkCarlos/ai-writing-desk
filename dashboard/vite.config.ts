@@ -1,14 +1,21 @@
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  root: new URL(".", import.meta.url).pathname,
+  root: fileURLToPath(new URL(".", import.meta.url)),
   base: "/dashboard/",
   plugins: [react(), tailwindcss()],
   build: {
     outDir: "../dist/dashboard",
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        dashboard: fileURLToPath(new URL("./index.html", import.meta.url)),
+        simple: fileURLToPath(new URL("./simple.html", import.meta.url)),
+      },
+    },
   },
   server: {
     port: 5173,
