@@ -167,6 +167,10 @@ function App() {
   >(null);
   const [previousDraft, setPreviousDraft] = useState<Draft | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [busyStart, setBusyStart] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const renderInput = JSON.stringify({
     title: draft.title,
     body: draft.body,
@@ -198,6 +202,34 @@ function App() {
   useEffect(() => {
     setExportConfirmed(false);
   }, [currentReviewInput]);
+
+  useEffect(() => {
+    if (!busy) return;
+    const start = Date.now();
+    setBusyStart(start);
+    setNow(start);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [busy]);
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [error]);
+
+  const busyLabel: Record<string, string> = {
+    outline: "正在生成大纲",
+    article: "正在生成正文",
+    review: "正在评审当前稿",
+    revise: "正在生成建议稿",
+    render: "正在排版",
+    settings: "正在保存模型设置",
+  };
+  const busySeconds = busy
+    ? Math.max(0, Math.round((now - busyStart) / 1000))
+    : 0;
+  const slowStep = ["article", "review", "revise", "outline"].includes(busy);
 
   async function runReview(value: Draft) {
     setBusy("review");
@@ -299,7 +331,10 @@ function App() {
 
   function update(field: keyof Draft, value: string) {
     setDraft((current) => ({ ...current, [field]: value }));
-    if (["topic", "material", "outline"].includes(field)) setConfirmed(false);
+    if (["topic", "material", "outline"].includes(field)) {
+      if (confirmed) setConfirmReset(true);
+      setConfirmed(false);
+    }
     setMessage("");
   }
 
@@ -328,6 +363,7 @@ function App() {
         ? current.sources.filter((item) => item.url !== source.url)
         : [...current.sources, source],
     }));
+    if (confirmed) setConfirmReset(true);
     setConfirmed(false);
     setError("");
   }
@@ -459,7 +495,7 @@ function App() {
     `${item.title} ${item.excerpt} ${item.source}`.toLowerCase().includes(
       query.toLowerCase(),
     )
-  );
+  ).sort((a, b) => Number(!a.excerpt) - Number(!b.excerpt));
   const filename = (draft.title || draft.topic || "AI文章").replace(
     /[\\/:*?"<>|]/g,
     "_",
@@ -518,15 +554,30 @@ function App() {
           <Alert color="red" title="本机保存异常" mb="md">{storageError}</Alert>
         )}
         {error && (
-          <Alert
-            color="red"
-            role="alert"
-            mb="md"
-            withCloseButton
-            onClose={() => setError("")}
-          >
-            {error}
-          </Alert>
+          <div ref={errorRef}>
+            <Alert
+              color="red"
+              role="alert"
+              mb="md"
+              withCloseButton
+              onClose={() => setError("")}
+            >
+              {error}
+            </Alert>
+          </div>
+        )}
+        {busy && busyLabel[busy] && (
+          <div className="simple-busy" role="status" aria-live="polite">
+            <span className="simple-busy-dot" aria-hidden="true" />
+            {busyLabel[busy]}… 已用 {busySeconds} 秒
+            {slowStep && (
+              <span className="simple-busy-note">
+                {busy === "review"
+                  ? "评审通常需要 1～2 分钟，正文已保存，请勿关闭页面"
+                  : "模型生成中，请勿关闭页面"}
+              </span>
+            )}
+          </div>
         )}
         {message && (
           <Alert
@@ -622,6 +673,11 @@ function App() {
                         <time dateTime={source.publishedAt}>
                           {date(source.publishedAt)}
                         </time>
+                        {!source.excerpt && (
+                          <Badge size="xs" color="gray" variant="light">
+                            需补素材
+                          </Badge>
+                        )}
                       </div>
                       <h3>
                         <a href={source.url} target="_blank" rel="noreferrer">
@@ -647,19 +703,18 @@ function App() {
                 );
               })}
             </div>
-            <div className="simple-actions">
-              <span>已选 {draft.sources.length} / 5 条素材</span>
-              <Group>
-                <Button variant="default" onClick={() => setStep(1)}>
-                  手动输入主题
-                </Button>
-                <Button
-                  rightSection={<ArrowRight size={16} />}
-                  onClick={() => setStep(1)}
-                >
-                  整理素材与大纲
-                </Button>
-              </Group>
+            <div className="simple-actions simple-actions-sticky">
+              <span>
+                已选 {draft.sources.length} / 5 条素材
+                {draft.sources.length === 0 && " · 不选也可以直接手动输入主题"}
+              </span>
+              <Button
+                rightSection={<ArrowRight size={16} />}
+                variant={draft.sources.length ? "filled" : "default"}
+                onClick={() => setStep(1)}
+              >
+                {draft.sources.length ? "整理素材与大纲" : "手动输入主题"}
+              </Button>
             </div>
           </section>
         )}
@@ -749,9 +804,17 @@ function App() {
               <Checkbox
                 label="我已检查素材与大纲，确认按此生成正文"
                 checked={confirmed}
-                onChange={(e) => setConfirmed(e.currentTarget.checked)}
+                onChange={(e) => {
+                  setConfirmed(e.currentTarget.checked);
+                  if (e.currentTarget.checked) setConfirmReset(false);
+                }}
                 disabled={!draft.outline.trim()}
               />
+              {confirmReset && !confirmed && (
+                <p className="simple-hint" role="status">
+                  主题、素材或大纲已修改，请重新检查并勾选确认，才能生成正文。
+                </p>
+              )}
             </fieldset>
             <div className="simple-actions">
               <span>
@@ -881,6 +944,71 @@ function App() {
                       填写标题与正文后，点击“生成排版预览”。
                     </div>
                   )}
+                <div className="simple-checklist" aria-label="交付前检查">
+                  <strong>
+                    {exportReady
+                      ? "检查都已完成，可以复制或导出"
+                      : "复制 / 导出 HTML 前还差："}
+                  </strong>
+                  <ul>
+                    {[
+                      {
+                        done: previewReady,
+                        label: "排版预览是当前正文",
+                        todo: "点左侧「更新排版预览」",
+                      },
+                      {
+                        done: privacyFindings.length === 0,
+                        label: "没有疑似隐私信息",
+                        todo: "先按上方红色提示脱敏",
+                      },
+                      {
+                        done: reviewCurrent && review?.status === "completed",
+                        label: "当前稿已完成评审",
+                        todo: "去评审",
+                        jump: true,
+                      },
+                      {
+                        done: reviewCurrent && review?.status === "completed" &&
+                          !highRisk,
+                        label: "没有高风险问题",
+                        todo: "查看评审意见",
+                        jump: true,
+                      },
+                      {
+                        done: exportConfirmed,
+                        label: "已人工检查评审、待核实事项与 AI 标识",
+                        todo: "勾选下方确认",
+                      },
+                    ].map((item) => (
+                      <li key={item.label} className={item.done ? "done" : ""}>
+                        <span aria-hidden="true">{item.done ? "✓" : "○"}</span>
+                        {item.label}
+                        {!item.done && (item.jump
+                          ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                document.getElementById("simple-review")
+                                  ?.scrollIntoView({ behavior: "smooth" })}
+                            >
+                              {item.todo}
+                            </button>
+                          )
+                          : <em>{item.todo}</em>)}
+                      </li>
+                    ))}
+                  </ul>
+                  <Checkbox
+                    label="我已检查当前评审、待核实事项与 AI 标识"
+                    checked={exportConfirmed}
+                    disabled={!reviewCurrent ||
+                      review?.status !== "completed" ||
+                      highRisk || Boolean(busy)}
+                    onChange={(e) =>
+                      setExportConfirmed(e.currentTarget.checked)}
+                  />
+                </div>
                 <Group gap="xs">
                   <Button
                     variant="default"
@@ -909,20 +1037,31 @@ function App() {
                   >
                     导出 HTML
                   </Button>
+                  <Button
+                    variant="subtle"
+                    leftSection={<Download size={15} />}
+                    disabled={!draft.body.trim() ||
+                      privacyFindings.length > 0 ||
+                      Boolean(busy)}
+                    onClick={() => {
+                      download(
+                        `${filename}.md`,
+                        markdown(draft),
+                        "text/markdown;charset=utf-8",
+                      );
+                      setMessage("Markdown 已交给浏览器下载。");
+                    }}
+                  >
+                    备份 Markdown
+                  </Button>
                 </Group>
                 <p className="simple-caption">
-                  评审当前稿、处理优先风险并确认后可复制/导出
-                  HTML。发布时请使用公众号的 AI 内容声明功能。
+                  Markdown 不受上述检查限制，可随时备份。发布时请使用公众号的 AI
+                  内容声明功能。
                 </p>
-                <Checkbox
-                  label="我已检查当前评审、待核实事项与 AI 标识"
-                  checked={exportConfirmed}
-                  disabled={!reviewCurrent || review?.status !== "completed" ||
-                    highRisk || Boolean(busy)}
-                  onChange={(e) => setExportConfirmed(e.currentTarget.checked)}
-                />
               </div>
             </div>
+            <div id="simple-review" />
             <SimpleReviewPanel
               review={review}
               current={reviewCurrent}
@@ -935,22 +1074,6 @@ function App() {
               <span>
                 {generationInfo || "保留自己的修改，发布前核对来源与事实。"}
               </span>
-              <Button
-                variant="default"
-                leftSection={<Download size={15} />}
-                disabled={!draft.body.trim() || privacyFindings.length > 0 ||
-                  Boolean(busy)}
-                onClick={() => {
-                  download(
-                    `${filename}.md`,
-                    markdown(draft),
-                    "text/markdown;charset=utf-8",
-                  );
-                  setMessage("Markdown 已交给浏览器下载。");
-                }}
-              >
-                导出 Markdown
-              </Button>
             </div>
           </section>
         )}

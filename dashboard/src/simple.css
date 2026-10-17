@@ -463,3 +463,105 @@
     width: 100%;
   }
 }
+
+/* UX 2026-10-17：交付清单、耗时、确认提示、底部操作栏 */
+h2[tabindex="-1"]:focus {
+  outline: none;
+}
+.simple-actions-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--tp-surface, #fff);
+  padding-bottom: 16px;
+  margin-bottom: -16px;
+}
+.simple-hint {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: #b45309;
+}
+.simple-busy {
+  position: sticky;
+  top: 8px;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 13px;
+}
+.simple-busy-note {
+  color: var(--tp-muted);
+  font-size: 12px;
+}
+.simple-busy-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: simple-pulse 1.2s ease-in-out infinite;
+}
+@keyframes simple-pulse {
+  50% {
+    opacity: .25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .simple-busy-dot {
+    animation: none;
+  }
+}
+.simple-checklist {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--tp-border);
+  border-radius: 8px;
+  font-size: 13px;
+  display: grid;
+  gap: 8px;
+}
+.simple-checklist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.simple-checklist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--tp-text, #1f2937);
+}
+.simple-checklist li > span {
+  width: 14px;
+  color: var(--tp-muted);
+}
+.simple-checklist li.done {
+  color: var(--tp-muted);
+}
+.simple-checklist li.done > span {
+  color: #15803d;
+}
+.simple-checklist em {
+  font-style: normal;
+  color: #b45309;
+  font-size: 12px;
+}
+.simple-checklist button {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--tp-blue);
+  font-size: 12px;
+  text-decoration: underline;
+}
