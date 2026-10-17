@@ -52,3 +52,13 @@ export function scanPrivacy(value: string): PrivacyFinding[] {
 }
 
 export const AI_DISCLOSURE = "本文使用 AI 辅助创作。";
+
+// The export step appends AI_DISCLOSURE itself. Remove only the model's own
+// "本文由 AI 辅助整理" style clause so surrounding caveats stay intact.
+const MODEL_DISCLOSURE =
+  /[（(]?\s*本文(?:由|使用|借助|经|系)?\s*(?:AI|人工智能|ＡＩ)\s*(?:辅助|协助|参与)?\s*(?:整理|创作|生成|撰写|写作|完成|编写)\s*(?:而成)?\s*[)）]?\s*(?:[，,；;]\s*|[。.！!]\s*|$)/g;
+
+export function stripModelDisclosure(body: string): string {
+  return body.replace(MODEL_DISCLOSURE, "").replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n").trimEnd();
+}

@@ -10,6 +10,7 @@ import {
   sources,
 } from "./workbench.ts";
 import { createHandler } from "./server.ts";
+import { AI_DISCLOSURE, stripModelDisclosure } from "./privacy.ts";
 
 const input = {
   topic: "测试主题",
@@ -242,4 +243,73 @@ Deno.test("大纲与正文均使用 max 思考，保留思考和最终内容的�
     const result = await generate(llm, input, mode);
     assertEquals(result.reasoningEffort, "max");
   }
+});
+
+function sequence(
+  replies: { content: string; finish: string }[],
+): LLMProvider & { calls: number } {
+  const llm = {
+    calls: 0,
+    initialize: async () => {},
+    refresh: async () => {},
+    setModel: () => {},
+    createChatCompletion: async () => {
+      const reply = replies[Math.min(llm.calls, replies.length - 1)];
+      llm.calls += 1;
+      return {
+        choices: [{
+          message: { content: reply.content },
+          finish_reason: reply.finish,
+        }],
+      };
+    },
+  };
+  return llm;
+}
+
+Deno.test("正文思考耗尽且没写出内容时自动重试 1 次，并报告尝试次数", async () => {
+  const llm = sequence([
+    { content: "", finish: "length" },
+    { content: '{"title":"标题","body":"正文"}', finish: "stop" },
+  ]);
+  const attempts: number[] = [];
+  const result = await generate(llm, input, "article", (n) => attempts.push(n));
+  assertEquals(llm.calls, 2);
+  assertEquals(attempts, [1, 2]);
+  assertEquals(result.attempts, 2);
+  assertEquals(result.body, "正文");
+});
+
+Deno.test("重试后仍没写出正文时明确报错，不返回空正文", async () => {
+  const llm = sequence([{ content: "", finish: "length" }]);
+  await assertRejects(
+    () => generate(llm, input, "article"),
+    Error,
+    "正文没写出来，可以再点一次生成",
+  );
+  assertEquals(llm.calls, 2);
+});
+
+Deno.test("已写出部分正文的截断、大纲截断都不重试", async () => {
+  const partial = sequence([{ content: '{"title":"标题","body":"半', finish: "length" }]);
+  await assertRejects(() => generate(partial, input, "article"), Error, "截断");
+  assertEquals(partial.calls, 1);
+  const outline = sequence([{ content: "", finish: "length" }]);
+  await assertRejects(() => generate(outline, input, "outline"), Error, "大纲");
+  assertEquals(outline.calls, 1);
+});
+
+Deno.test("导出只保留一处 AI 声明：去掉模型自写的声明短句，保留其余说明", async () => {
+  const body =
+    "正文第一段。\n\n来源：OpenAI 客户案例。本文由 AI 辅助整理，基于该页要点并加入作者分析，未独立复现。";
+  assertEquals(
+    stripModelDisclosure(body),
+    "正文第一段。\n\n来源：OpenAI 客户案例。基于该页要点并加入作者分析，未独立复现。",
+  );
+  assertEquals(stripModelDisclosure("正文。\n\n（本文使用AI辅助创作）"), "正文。");
+  assertEquals(stripModelDisclosure("本文讨论 AI 辅助编程的成本。"), "本文讨论 AI 辅助编程的成本。");
+  const html = await renderArticle("标题", body, [], true);
+  assertEquals(html.split(AI_DISCLOSURE).length - 1, 1);
+  assert(!html.includes("本文由 AI 辅助整理"));
+  assert(html.includes("未独立复现"));
 });

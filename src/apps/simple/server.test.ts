@@ -58,13 +58,14 @@ async function errorOf(res: Response, status: number) {
   return data.error as string;
 }
 
-Deno.test("status 返回 configured/model/reasoningEffort", async () => {
+Deno.test("status 返回 configured/model/reasoningEffort/generation", async () => {
   const { handler } = await setup();
   const res = await call(handler, "/api/simple/status");
   assertEquals(res.status, 200);
   const data = await res.json();
-  assertEquals(Object.keys(data).sort(), ["configured", "model", "reasoningEffort"]);
+  assertEquals(Object.keys(data).sort(), ["configured", "generation", "model", "reasoningEffort"]);
   assertEquals(data.configured, false);
+  assertEquals(data.generation, null);
   assertEquals(typeof data.model, "string");
 });
 

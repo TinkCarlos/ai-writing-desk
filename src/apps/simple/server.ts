@@ -84,6 +84,8 @@ async function readJson(req: Request) {
 export async function createHandler(modelFile = MODEL_FILE) {
   let settings = await loadSettings(modelFile);
   let generating = false;
+  let generation: { mode: string; attempt: number; startedAt: string } | null =
+    null;
   let news: Awaited<ReturnType<typeof fetchNews>> | null = null;
   let newsRequest: ReturnType<typeof fetchNews> | null = null;
   const reviews = new Map<string, ArticleReview>();
@@ -115,6 +117,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
           configured: Boolean(settings.apiKey),
           model: settings.model,
           reasoningEffort: settings.reasoningEffort,
+          generation,
         });
       }
       if (url.pathname === "/api/simple/settings" && req.method === "POST") {
@@ -214,6 +217,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
           return json({ error: "已有生成任务进行中，请稍后再试" }, 409);
         }
         generating = true;
+        generation = { mode, attempt: 1, startedAt: new Date().toISOString() };
         try {
           const llm = new OpenAICompatibleLLM({
             baseUrl: "https://api.deepseek.com/v1",
@@ -227,7 +231,9 @@ export async function createHandler(modelFile = MODEL_FILE) {
             ? await reviewArticle(llm, article!)
             : mode === "revise"
             ? await reviseArticle(llm, article!, previousReview!)
-            : await generate(llm, input!, mode);
+            : await generate(llm, input!, mode, (attempt) => {
+              if (generation) generation.attempt = attempt;
+            });
           if (mode === "review") {
             const review = result as ArticleReview;
             reviews.set(review.fingerprint, review);
@@ -240,11 +246,13 @@ export async function createHandler(modelFile = MODEL_FILE) {
             model: result.model,
             reasoningEffort: settings.reasoningEffort,
             elapsedMs: "elapsedMs" in result ? result.elapsedMs : undefined,
+            attempts: "attempts" in result ? result.attempts : undefined,
             usage: result.usage,
           }));
           return json(result);
         } finally {
           generating = false;
+          generation = null;
         }
       }
       if (url.pathname === "/api/simple/render" && req.method === "POST") {

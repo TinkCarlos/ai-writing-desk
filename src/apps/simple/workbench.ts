@@ -4,7 +4,7 @@ import type { LLMProvider } from "@src/core/ports/llm.ts";
 import { RsshubScraper } from "@src/integrations/fetch/providers/rsshub-scraper.ts";
 import { WeixinArticleTemplateRenderer } from "@src/features/weixin-article/rendering/article.renderer.ts";
 import { parseLLMJson } from "@src/utils/llm-output.ts";
-import { AI_DISCLOSURE, scanPrivacy } from "./privacy.ts";
+import { AI_DISCLOSURE, scanPrivacy, stripModelDisclosure } from "./privacy.ts";
 import { WRITING_STYLE } from "./writing-style.ts";
 import { WRITE_HINTS } from "./editorial-rules.ts";
 
@@ -163,6 +163,7 @@ export async function generate(
   llm: LLMProvider,
   input: Brief,
   mode: "outline" | "article",
+  onAttempt?: (attempt: number) => void,
 ) {
   const privateInput = scanPrivacy(JSON.stringify(input));
   if (privateInput.length) {
@@ -176,35 +177,52 @@ export async function generate(
   const instruction = mode === "outline"
     ? '返回 {"outline":"可编辑的大纲文本"}，交代目标读者、主问题、作者角度、适合本题材的展开顺序及需要补证的事实。不要机械凑固定章节。只写大纲，不写正文。'
     : '按已确认的大纲写完整初稿。返回 {"title":"标题","body":"Markdown 正文"}。正文用自然段，必要时用 ## 小标题，不重复文章标题。材料足够时约1200～1800字，材料不足时缩短，不为凑字数编造。完成前按底线与证据、中文表达、内容推进、读者通读四层检查，删去重复和空话；只输出稿件，不把自检报告写进文章。';
-  const response = await llm.createChatCompletion([
-    {
-      role: "system",
-      content: mode === "outline"
-        ? `${SYSTEM_PROMPT}\n${instruction}`
-        : `${SYSTEM_PROMPT}\n${ARTICLE_BODY_RULES}\n${ARTICLE_RISK_HINTS}\n${instruction}`,
-    },
-    { role: "user", content: JSON.stringify(input) },
-  ], {
-    temperature: 0.35,
-    // Thinking tokens share the completion budget with the final article.
-    max_tokens: mode === "outline" ? 16384 : 32768,
-    thinking: { type: "enabled" },
-    reasoning_effort: reasoningEffort(),
-    timeoutMs: 600000,
-    maxAttempts: 1,
-    response_format: { type: "json_object" },
-  });
-  if (response.choices[0]?.finish_reason === "length") {
+  // Thinking can occasionally consume the whole budget before any article
+  // text is written; that case gets exactly one automatic retry.
+  let attempts = 0;
+  let response;
+  while (true) {
+    attempts += 1;
+    onAttempt?.(attempts);
+    response = await llm.createChatCompletion([
+      {
+        role: "system",
+        content: mode === "outline"
+          ? `${SYSTEM_PROMPT}\n${instruction}`
+          : `${SYSTEM_PROMPT}\n${ARTICLE_BODY_RULES}\n${ARTICLE_RISK_HINTS}\n${instruction}`,
+      },
+      { role: "user", content: JSON.stringify(input) },
+    ], {
+      temperature: 0.35,
+      // Thinking tokens share the completion budget with the final article.
+      max_tokens: mode === "outline" ? 16384 : 32768,
+      thinking: { type: "enabled" },
+      reasoning_effort: reasoningEffort(),
+      timeoutMs: 600000,
+      maxAttempts: 1,
+      response_format: { type: "json_object" },
+    });
+    const finish = response.choices[0]?.finish_reason;
+    const empty = !(response.choices[0]?.message?.content ?? "").trim();
+    if (finish !== "length") break;
+    const retry = mode === "article" && empty && attempts < 2;
     console.info(JSON.stringify({
       event: "simple-incomplete-generation",
       mode,
       model: response.model,
       finishReason: "length",
+      emptyContent: empty,
+      attempt: attempts,
+      retry: retry ? "empty-after-reasoning" : undefined,
+      elapsedMs: Math.round(performance.now() - startedAt),
       usage: response.usage,
     }));
+    if (retry) continue;
     throw new Error(
       mode === "outline"
         ? "大纲生成超出输出上限被截断，请重试；素材很多时可先精简素材"
+        : empty
+        ? "正文没写出来，可以再点一次生成；草稿和大纲已保留"
         : "正文生成超出输出上限被截断，请重试；当前草稿已保留",
     );
   }
@@ -223,6 +241,7 @@ export async function generate(
     usage: response.usage ?? null,
     model: response.model ?? null,
     reasoningEffort: reasoningEffort(),
+    attempts,
     elapsedMs: Math.round(performance.now() - startedAt),
   };
 }
@@ -294,7 +313,7 @@ export async function renderArticle(
   return await renderer.render([{
     id: "local-article",
     title,
-    content: bodyHtml(body) +
+    content: bodyHtml(aiAssisted ? stripModelDisclosure(body) : body) +
       (references ? `<next_paragraph />${references}` : "") +
       (aiAssisted
         ? `<next_paragraph /><p style="font-size:12px;color:#666;">${AI_DISCLOSURE}</p>`
