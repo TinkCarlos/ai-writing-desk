@@ -8,6 +8,7 @@ import { ProviderError } from "@src/core/errors/provider-error.ts";
 import {
   assertNoPrivacy,
   fingerprint,
+  IncompleteGenerationError,
   localPrivacyReview,
   reviewArticle,
   reviewInput,
@@ -15,6 +16,7 @@ import {
 } from "./editorial.ts";
 import { RULE_VERSION } from "./editorial-rules.ts";
 import type { ArticleReview } from "./review-contract.ts";
+import type { LLMProvider } from "@src/core/ports/llm.ts";
 import {
   brief,
   fetchNews,
@@ -86,7 +88,18 @@ async function readJson(req: Request) {
   }
 }
 
-export async function createHandler(modelFile = MODEL_FILE) {
+export async function createHandler(
+  modelFile = MODEL_FILE,
+  // 仅供契约测试注入假模型；默认构造与线上一致。
+  createLlm: (settings: Settings) => LLMProvider = (settings) =>
+    new OpenAICompatibleLLM({
+      baseUrl: "https://api.deepseek.com/v1",
+      apiKey: settings.apiKey,
+      model: settings.model,
+      timeoutMs: 600000,
+      maxAttempts: 1,
+    }),
+) {
   let settings = await loadSettings(modelFile);
   const debugTokens = debugArticleMaxTokens();
   if (debugTokens !== null) {
@@ -234,13 +247,7 @@ export async function createHandler(modelFile = MODEL_FILE) {
         generating = true;
         generation = { mode, attempt: 1, startedAt: new Date().toISOString() };
         try {
-          const llm = new OpenAICompatibleLLM({
-            baseUrl: "https://api.deepseek.com/v1",
-            apiKey: settings.apiKey,
-            model: settings.model,
-            timeoutMs: 600000,
-            maxAttempts: 1,
-          });
+          const llm = createLlm(settings);
           await llm.initialize();
           const result = mode === "review"
             ? await reviewArticle(llm, article!)
@@ -328,7 +335,12 @@ export async function createHandler(modelFile = MODEL_FILE) {
         message = "DeepSeek 鉴权失败，请检查 API Key";
       }
       console.error(`[simple] ${message}`);
-      return json({ error: message }, 502);
+      return json(
+        error instanceof IncompleteGenerationError
+          ? { error: message, reason: error.reason }
+          : { error: message },
+        502,
+      );
     }
   };
 }

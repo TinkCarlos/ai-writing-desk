@@ -4,6 +4,7 @@ import { assert, assertEquals, assertMatch, assertRejects } from "jsr:@std/asser
 import { createHandler } from "./server.ts";
 import { REVIEW_CATEGORIES } from "./review-contract.ts";
 import { RULE_VERSION } from "./editorial-rules.ts";
+import type { LLMProvider } from "@src/core/ports/llm.ts";
 
 const ORIGIN = "http://127.0.0.1:8000";
 const SOURCE = {
@@ -71,6 +72,35 @@ Deno.test("status 返回 configured/model/reasoningEffort/generation/ruleVersion
   assertEquals(data.configured, false);
   assertEquals(data.generation, null);
   assertEquals(typeof data.model, "string");
+});
+
+Deno.test("评审被截断/未完整结束：502 带 reason，页面不靠文案识别", async () => {
+  const cases = [
+    { finish: "length", reason: "truncated", pattern: /截断/ },
+    { finish: "content_filter", reason: "incomplete", pattern: /没有完整结束/ },
+  ] as const;
+  for (const c of cases) {
+    const dir = await Deno.makeTempDir();
+    const file = new URL(`file://${dir}/simple-model.json`);
+    await Deno.writeTextFile(file, JSON.stringify({ apiKey: "test-key", model: "test-model" }));
+    const llm: LLMProvider = {
+      initialize: async () => {},
+      refresh: async () => {},
+      setModel: () => {},
+      createChatCompletion: async () => ({
+        model: "test-model",
+        choices: [{ finish_reason: c.finish, message: { content: "{}" } }],
+      }),
+    };
+    const handler = await createHandler(file, () => llm);
+    const res = await call(handler, "/api/simple/review", { body: ARTICLE });
+    assertEquals(res.status, 502);
+    const data = await res.json();
+    assertEquals(Object.keys(data).sort(), ["error", "reason"]);
+    assertEquals(data.reason, c.reason);
+    assertMatch(data.error, c.pattern);
+    assertMatch(data.error, /不能当作评审通过/);
+  }
 });
 
 Deno.test("非本机 Host 返回 403", async () => {

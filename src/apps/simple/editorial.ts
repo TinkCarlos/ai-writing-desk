@@ -16,6 +16,16 @@ import {
   type ReviewIssue,
 } from "./review-contract.ts";
 
+/** 模型未完整结束：截断（length）与其它异常 finish_reason 分开报，页面据 reason 显示，不靠错误文案匹配。 */
+export class IncompleteGenerationError extends Error {
+  readonly reason: "truncated" | "incomplete";
+  constructor(message: string, reason: "truncated" | "incomplete") {
+    super(message);
+    this.name = "IncompleteGenerationError";
+    this.reason = reason;
+  }
+}
+
 export interface ReviewInput {
   title: string;
   body: string;
@@ -222,10 +232,13 @@ export async function reviewArticle(
       usage: response.usage,
       elapsedMs: Math.round(performance.now() - start),
     }));
-    throw new Error(
+    throw new IncompleteGenerationError(
       response.choices[0]?.finish_reason === "length"
         ? "评审超出输出上限被截断，请重试；不能当作评审通过"
         : "评审没有完整结束，请重试；不能当作评审通过",
+      response.choices[0]?.finish_reason === "length"
+        ? "truncated"
+        : "incomplete",
     );
   }
   const result = normalizeReview(
@@ -292,10 +305,13 @@ export async function reviseArticle(
       usage: response.usage,
       elapsedMs: Math.round(performance.now() - start),
     }));
-    throw new Error(
+    throw new IncompleteGenerationError(
       response.choices[0]?.finish_reason === "length"
         ? "建议稿超出输出上限被截断，原稿已保留"
         : "建议稿没有完整生成，原稿已保留",
+      response.choices[0]?.finish_reason === "length"
+        ? "truncated"
+        : "incomplete",
     );
   }
   const raw = object(parseLLMJson(response.choices[0]?.message?.content ?? ""));
