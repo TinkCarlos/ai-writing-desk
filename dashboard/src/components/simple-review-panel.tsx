@@ -14,9 +14,13 @@ import {
 } from "../../../src/apps/simple/editorial-rules.ts";
 
 export function SimpleReviewPanel(
-  { review, current, busy, canReview, onReview, onRevise }: {
+  { review, current, referenceOnly, failureReason, busy, canReview, onReview, onRevise }: {
     review: ArticleReview | null;
     current: boolean;
+    /** Latest attempt failed: show the kept review as reference only. */
+    referenceOnly?: boolean;
+    /** Backend reason for the failed attempt, e.g. "truncated". */
+    failureReason?: string;
     busy: string;
     canReview: boolean;
     onReview: () => void;
@@ -57,14 +61,50 @@ export function SimpleReviewPanel(
           正在独立评审，正文已保留。评审也会消耗模型额度。
         </Alert>
       )}
+      {!review && failureReason && busy !== "review" && (
+        <Alert color="red" mb="md">
+          {failureReason === "truncated"
+            ? "评审没跑完，结果被截断了，不能当作评审通过。再评一次约消耗同样的额度。"
+            : "评审没有完整结束，不能当作评审通过。"}
+          <Button
+            size="xs"
+            variant="light"
+            color="red"
+            ml="sm"
+            disabled={!canReview || Boolean(busy)}
+            onClick={onReview}
+          >
+            重新评审
+          </Button>
+        </Alert>
+      )}
       {review
         ? (
           <>
-            {!current && (
-              <Alert color="yellow" mb="md">
-                文章、素材、来源或评审规则已变化，下方是旧版本评审，不能用于当前稿。
-              </Alert>
-            )}
+            {referenceOnly
+              ? (
+                <Alert color="yellow" mb="md">
+                  本次评审未完成，下方是上一次完整评审，仅供参考，不能用于导出。
+                  {failureReason === "truncated"
+                    ? "本次评审结果被截断，再评一次约消耗同样的额度。"
+                    : ""}
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="yellow"
+                    ml="sm"
+                    disabled={!canReview || Boolean(busy)}
+                    onClick={onReview}
+                  >
+                    重新评审
+                  </Button>
+                </Alert>
+              )
+              : !current && (
+                <Alert color="yellow" mb="md">
+                  文章、素材、来源或评审规则已变化，下方是旧版本评审，不能用于当前稿。
+                </Alert>
+              )}
             <p className="simple-review-summary">{review.summary}</p>
             <div className="simple-review-checks">
               {review.checks.map((check) => (

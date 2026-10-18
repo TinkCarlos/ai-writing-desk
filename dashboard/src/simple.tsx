@@ -110,6 +110,15 @@ function restore(): { draft: Draft; error: string } {
   }
 }
 
+class ApiError extends Error {
+  readonly reason?: string;
+  constructor(message: string, reason?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.reason = reason;
+  }
+}
+
 async function api<T>(path: string, data?: unknown): Promise<T> {
   const response = await fetch(
     `/api/simple/${path}`,
@@ -120,7 +129,9 @@ async function api<T>(path: string, data?: unknown): Promise<T> {
     },
   );
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "请求失败，请稍后再试");
+  if (!response.ok) {
+    throw new ApiError(result.error || "请求失败，请稍后再试", result.reason);
+  }
   return result;
 }
 
@@ -168,6 +179,10 @@ function App() {
   const [generationInfo, setGenerationInfo] = useState("");
   const [review, setReview] = useState<ArticleReview | null>(null);
   const [reviewedInput, setReviewedInput] = useState("");
+  // Set when the latest review attempt failed: the kept review is then
+  // reference-only and must never count as current or unlock export.
+  const [lastReviewFailed, setLastReviewFailed] = useState(false);
+  const [reviewFailureReason, setReviewFailureReason] = useState("");
   const [exportConfirmed, setExportConfirmed] = useState(false);
   const [candidate, setCandidate] = useState<
     { title: string; body: string; changes: string[] } | null
@@ -199,7 +214,7 @@ function App() {
   // version bundled into this page so nothing flips to stale while loading.
   const activeRuleVersion = status?.ruleVersion || RULE_VERSION;
   const reviewCurrent = Boolean(
-    review && review.ruleVersion === activeRuleVersion &&
+    review && !lastReviewFailed && review.ruleVersion === activeRuleVersion &&
       reviewedInput === currentReviewInput,
   );
   const privacyFindings = scanPrivacy(currentReviewInput);
@@ -267,13 +282,14 @@ function App() {
     setBusy("review");
     setError("");
     setMessage("");
-    setReview(null);
-    setReviewedInput("");
+    setReviewFailureReason("");
     const snapshot = JSON.stringify(getReviewInput(value));
     try {
       const result = await api<ArticleReview>("review", JSON.parse(snapshot));
       setReview(result);
       setReviewedInput(snapshot);
+      setLastReviewFailed(false);
+      setReviewFailureReason("");
       setExportConfirmed(false);
       setMessage(
         result.status === "local_only"
@@ -281,6 +297,8 @@ function App() {
           : "评审完成，请逐项检查意见和待核实事项。",
       );
     } catch (err) {
+      setLastReviewFailed(true);
+      setReviewFailureReason(err instanceof ApiError ? err.reason ?? "" : "");
       setError(
         `评审未完成，正文已保留：${
           err instanceof Error ? err.message : String(err)
@@ -967,6 +985,8 @@ function App() {
                         setPreviousDraft(null);
                         setReview(null);
                         setReviewedInput("");
+                        setLastReviewFailed(false);
+                        setReviewFailureReason("");
                         setMessage("已恢复应用建议稿之前的原稿，请重新评审。");
                       }
                     }}
@@ -1127,6 +1147,8 @@ function App() {
             <SimpleReviewPanel
               review={review}
               current={reviewCurrent}
+              referenceOnly={lastReviewFailed && Boolean(review)}
+              failureReason={reviewFailureReason}
               busy={busy}
               canReview={Boolean(draft.title.trim() && draft.body.trim())}
               onReview={() => runReview(draft)}
